@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Huffman QR Decoder</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f4f4f9; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: inline-block; max-width: 90%; margin-top: 50px; }
+        h1 { color: #2c3e50; font-size: 22px; margin-bottom: 10px; }
+        .result { font-size: 26px; font-weight: bold; color: #27ae60; margin-top: 15px; word-wrap: break-word; }
+        .binary { font-family: monospace; color: #7f8c8d; font-size: 13px; margin-top: 15px; word-break: break-all; }
+        hr { border: 0; height: 1px; background: #eee; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🎉 Decoded Message</h1>
+        <hr>
+        <div id="decoded-output" class="result">Decoding...</div>
+        <div id="binary-output" class="binary"></div>
+    </div>
+
+    <script>
+        // Read binary bits and dictionary parameters from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const bitString = urlParams.get('bits');
+        const mapJSON = urlParams.get('map');
+
+        if (bitString && mapJSON) {
+            try {
+                // Parse reverse dictionary (Code -> Symbol)
+                const codeToSymbol = JSON.parse(mapJSON);
+
+                // Decode binary back into original characters
+                let decodedText = "";
+                let buffer = "";
+
+                for (let bit of bitString) {
+                    buffer += bit;
+                    if (codeToSymbol[buffer] !== undefined) {
+                        decodedText += codeToSymbol[buffer];
+                        buffer = "";
+                    }
+                }
+
+                // Display on phone screen
+                document.getElementById('decoded-output').innerText = decodedText;
+                document.getElementById('binary-output').innerText = "Raw Binary: " + bitString;
+            } catch (e) {
+                document.getElementById('decoded-output').innerText = "Error decoding message!";
+            }
+        } else {
+            document.getElementById('decoded-output').innerText = "No Huffman data found in link.";
+        }
+    </script>
+</body>
+</html>
