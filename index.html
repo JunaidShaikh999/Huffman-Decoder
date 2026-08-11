@@ -72,45 +72,27 @@
             const urlParams = new URLSearchParams(window.location.search);
             const bits = urlParams.get('bits');
             const keyParam = urlParams.get('key');
-            const mapParam = urlParams.get('map'); // Fallback for old JSON format
+
+            if (!bits || !keyParam) {
+                resultDiv.className = "output-box error";
+                resultDiv.innerText = "No Huffman data found in link.";
+                return;
+            }
 
             try {
-                let reverseDict = {};
+                const reverseDict = {};
 
-                // 1. Check for Compact Format ("ASCII:code|ASCII:code|")
-                if (keyParam) {
-                    const pairs = keyParam.split('|').filter(Boolean);
-                    pairs.forEach(pair => {
-                        const [charCode, code] = pair.split(':');
+                // Parse keyParam formatted as "ASCII_code-ASCII_code"
+                const pairs = keyParam.split('-').filter(Boolean);
+                pairs.forEach(pair => {
+                    const [charCode, code] = pair.split('_');
+                    if (charCode && code) {
                         const symbol = String.fromCharCode(parseInt(charCode, 10));
                         reverseDict[code] = symbol;
-                    });
-                } 
-                // 2. Fallback to Legacy JSON Format if keyParam is missing
-                else if (mapParam) {
-                    const parsedMap = JSON.parse(mapParam);
-                    if (Array.isArray(parsedMap)) {
-                        parsedMap.forEach(item => { reverseDict[item[0]] = item[1]; });
-                    } else {
-                        Object.keys(parsedMap).forEach(code => {
-                            let cleanCode = code.startsWith('x') ? code.substring(1) : code;
-                            reverseDict[cleanCode] = parsedMap[code];
-                        });
                     }
-                } 
-                else {
-                    resultDiv.className = "output-box error";
-                    resultDiv.innerText = "No Huffman data found in link.";
-                    return;
-                }
+                });
 
-                if (!bits) {
-                    resultDiv.className = "output-box error";
-                    resultDiv.innerText = "Bitstring missing from URL parameters.";
-                    return;
-                }
-
-                // Decode Bitstring using the Huffman Dictionary
+                // Decode Bitstring
                 let decodedText = '';
                 let currentCode = '';
 
@@ -124,7 +106,7 @@
 
                 if (decodedText.length === 0) {
                     resultDiv.className = "output-box error";
-                    resultDiv.innerText = "Failed to decode bitstring with the provided key.";
+                    resultDiv.innerText = "Failed to decode message.";
                 } else {
                     resultDiv.className = "output-box success";
                     resultDiv.innerText = decodedText;
