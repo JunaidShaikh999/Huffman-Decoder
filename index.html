@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Huffman Decoder</title>
+    <title>Huffman Decoder & Efficiency Analyzer</title>
     <style>
         * {
             box-sizing: border-box;
@@ -24,32 +24,71 @@
             padding: 30px;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            max-width: 500px;
+            max-width: 550px;
             width: 100%;
-            text-align: center;
         }
         h1 {
             font-size: 1.5rem;
             color: #333;
             margin-bottom: 20px;
+            text-align: center;
+        }
+        .section-label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            margin-top: 18px;
         }
         .output-box {
             background-color: #f8f9fa;
             border: 1px solid #e9ecef;
             border-radius: 8px;
-            padding: 15px;
-            font-size: 1.1rem;
+            padding: 12px 15px;
+            font-size: 1rem;
             color: #2b2b2b;
             word-wrap: break-word;
             white-space: pre-wrap;
-            min-height: 80px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            min-height: 50px;
+        }
+        .bits-box {
+            font-family: "Courier New", Courier, monospace;
+            background-color: #1e1e1e;
+            color: #4af626;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .stat-card {
+            background-color: #eef2f5;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #2e7d32;
+        }
+        .stat-label {
+            font-size: 0.75rem;
+            color: #555;
+            text-transform: uppercase;
+            margin-top: 2px;
         }
         .error {
             color: #d9534f;
             font-weight: 500;
+            text-align: center;
         }
         .success {
             color: #2e7d32;
@@ -60,14 +99,48 @@
 <body>
 
     <div class="container">
-        <h1>🎉 Decoded Message</h1>
-        <div id="result" class="output-box">Processing URL data...</div>
+        <h1>🎉 Huffman Web Decoder</h1>
+
+        <div id="content-display">
+            <div class="section-label">Decoded Message:</div>
+            <div id="result" class="output-box">Processing URL data...</div>
+
+            <div class="section-label">Compressed Bitstream:</div>
+            <div id="bits-output" class="output-box bits-box">---</div>
+
+            <div class="section-label">Efficiency Metrics:</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div id="space-saved" class="stat-value">0%</div>
+                    <div class="stat-label">Space Savings</div>
+                </div>
+                <div class="stat-card">
+                    <div id="coding-efficiency" class="stat-value">0%</div>
+                    <div class="stat-label">Coding Efficiency (&eta;)</div>
+                </div>
+                <div class="stat-card">
+                    <div id="bit-comparison" class="stat-value">0 / 0</div>
+                    <div class="stat-label">Compressed / ASCII Bits</div>
+                </div>
+                <div class="stat-card">
+                    <div id="entropy-val" class="stat-value">0.00</div>
+                    <div class="stat-label">Entropy (Bits/Char)</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const resultDiv = document.getElementById('result');
+            const bitsDiv = document.getElementById('bits-output');
             
+            // Stats elements
+            const spaceSavedDiv = document.getElementById('space-saved');
+            const efficiencyDiv = document.getElementById('coding-efficiency');
+            const bitComparisonDiv = document.getElementById('bit-comparison');
+            const entropyDiv = document.getElementById('entropy-val');
+
             // Extract parameters from URL
             const urlParams = new URLSearchParams(window.location.search);
             const bits = urlParams.get('bits');
@@ -76,6 +149,7 @@
             if (!bits || !keyParam) {
                 resultDiv.className = "output-box error";
                 resultDiv.innerText = "No Huffman data found in link.";
+                bitsDiv.innerText = "N/A";
                 return;
             }
 
@@ -107,9 +181,42 @@
                 if (decodedText.length === 0) {
                     resultDiv.className = "output-box error";
                     resultDiv.innerText = "Failed to decode message.";
+                    bitsDiv.innerText = bits;
                 } else {
                     resultDiv.className = "output-box success";
                     resultDiv.innerText = decodedText;
+                    bitsDiv.innerText = bits;
+
+                    // --- EFFICIENCY CALCULATIONS ---
+                    const N = decodedText.length;
+                    const originalBits = N * 8;
+                    const compressedBits = bits.length;
+
+                    // 1. Space Savings (%)
+                    const spaceSaved = ((1 - (compressedBits / originalBits)) * 100).toFixed(1);
+
+                    // 2. Entropy H(X)
+                    const freqMap = {};
+                    for (let char of decodedText) {
+                        freqMap[char] = (freqMap[char] || 0) + 1;
+                    }
+
+                    let entropy = 0;
+                    for (let char in freqMap) {
+                        let p = freqMap[char] / N;
+                        entropy -= p * Math.log2(p);
+                    }
+
+                    // 3. Average Code Length & Theoretical Efficiency
+                    const avgLength = compressedBits / N;
+                    // Handle edge case where entropy is 0 (single unique character)
+                    const efficiency = entropy > 0 ? ((entropy / avgLength) * 100).toFixed(1) : "100.0";
+
+                    // Update UI Cards
+                    spaceSavedDiv.innerText = `${spaceSaved}%`;
+                    efficiencyDiv.innerText = `${efficiency}%`;
+                    bitComparisonDiv.innerText = `${compressedBits} / ${originalBits}`;
+                    entropyDiv.innerText = entropy.toFixed(2);
                 }
 
             } catch (err) {
