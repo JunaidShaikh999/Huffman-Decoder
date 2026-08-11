@@ -24,7 +24,7 @@
             padding: 30px;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            max-width: 550px;
+            max-width: 600px;
             width: 100%;
         }
         h1 {
@@ -85,6 +85,45 @@
             text-transform: uppercase;
             margin-top: 2px;
         }
+        /* Table Styling */
+        .table-container {
+            margin-top: 8px;
+            overflow-x: auto;
+            max-height: 220px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+        th, td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background-color: #f8f9fa;
+            color: #555;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        tr:nth-child(even) {
+            background-color: #fcfcfc;
+        }
+        .symbol-col {
+            font-family: "Courier New", Courier, monospace;
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        .code-col {
+            font-family: "Courier New", Courier, monospace;
+            color: #1a73e8;
+        }
         .error {
             color: #d9534f;
             font-weight: 500;
@@ -127,6 +166,24 @@
                     <div class="stat-label">Entropy (Bits/Char)</div>
                 </div>
             </div>
+
+            <div class="section-label">Character Analysis Table:</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Char</th>
+                            <th>Code</th>
+                            <th>Count</th>
+                            <th>Prob (p<sub>i</sub>)</th>
+                            <th>-p<sub>i</sub> log<sub>2</sub>(p<sub>i</sub>)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr><td colspan="5" style="text-align:center;">No data available</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -140,6 +197,7 @@
             const efficiencyDiv = document.getElementById('coding-efficiency');
             const bitComparisonDiv = document.getElementById('bit-comparison');
             const entropyDiv = document.getElementById('entropy-val');
+            const tableBody = document.getElementById('table-body');
 
             // Extract parameters from URL
             const urlParams = new URLSearchParams(window.location.search);
@@ -195,21 +253,65 @@
                     // 1. Space Savings (%)
                     const spaceSaved = ((1 - (compressedBits / originalBits)) * 100).toFixed(1);
 
-                    // 2. Entropy H(X)
+                    // 2. Frequency Map
                     const freqMap = {};
                     for (let char of decodedText) {
                         freqMap[char] = (freqMap[char] || 0) + 1;
                     }
 
+                    // 3. Entropy & Table Row Construction
                     let entropy = 0;
+                    const tableRows = [];
+
                     for (let char in freqMap) {
-                        let p = freqMap[char] / N;
-                        entropy -= p * Math.log2(p);
+                        const count = freqMap[char];
+                        const p = count / N;
+                        const term = -p * Math.log2(p);
+                        entropy += term;
+
+                        // Retrieve the Huffman Code for this character
+                        let code = 'N/A';
+                        for (let c in reverseDict) {
+                            if (reverseDict[c] === char) {
+                                code = c;
+                                break;
+                            }
+                        }
+
+                        // Format special white-space characters for clear display
+                        let displayChar = char;
+                        if (char === ' ') displayChar = '[Space]';
+                        else if (char === '\n') displayChar = '[Newline]';
+                        else if (char === '\t') displayChar = '[Tab]';
+
+                        tableRows.push({
+                            char: displayChar,
+                            code: code,
+                            count: count,
+                            prob: p,
+                            entropyTerm: term
+                        });
                     }
 
-                    // 3. Average Code Length & Theoretical Efficiency
+                    // Sort rows by character count (highest frequency first)
+                    tableRows.sort((a, b) => b.count - a.count);
+
+                    // Render Table Rows
+                    tableBody.innerHTML = '';
+                    tableRows.forEach(row => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="symbol-col">${row.char}</td>
+                            <td class="code-col">${row.code}</td>
+                            <td>${row.count}</td>
+                            <td>${row.prob.toFixed(4)}</td>
+                            <td>${row.entropyTerm.toFixed(4)}</td>
+                        `;
+                        tableBody.appendChild(tr);
+                    });
+
+                    // 4. Average Code Length & Theoretical Efficiency
                     const avgLength = compressedBits / N;
-                    // Handle edge case where entropy is 0 (single unique character)
                     const efficiency = entropy > 0 ? ((entropy / avgLength) * 100).toFixed(1) : "100.0";
 
                     // Update UI Cards
